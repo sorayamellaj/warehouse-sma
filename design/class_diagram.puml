@@ -1,5 +1,5 @@
 @startuml
-title Warehouse MAS - Class diagram (Part 1: Agent Hierarchy)
+title Warehouse MAS - Class diagram
 
 abstract class Agent {
   - id : str
@@ -51,11 +51,63 @@ class AisleAgent {
   + evaluate(a : Action) : float
 }
 
+class KnowledgeBase {
+  - graph : Graph
+  - priority_rules : dict
+  - safety_zones : list
+  + get_layout() : Graph
+  + get_priority(order_id : str) : str
+  + get_params(order_id : str) : dict
+  + is_restricted(segment_id : str) : bool
+}
+
+class Sensor {
+  - sensor_id : str
+  - topic : str
+  + read() : Message
+  + publish() : void
+}
+
+class Actuator {
+  - actuator_id : str
+  - topic : str
+  + apply(command : Message) : void
+  + publish_status() : void
+}
+
+class MqttClient {
+  - broker_host : str
+  - port : int
+  - client_id : str
+  + connect() : void
+  + set_lwt(topic : str, payload : str) : void
+  + publish(topic : str, msg : Message, qos : int, retain : bool) : void
+  + subscribe(topic : str, qos : int) : void
+  + on_message(msg : Message) : void
+}
+
+class Message {
+  - topic : str
+  - ts : str
+  - source : str
+  - value : dict
+  - unit : str
+  + to_json() : str
+  + from_json(s : str) : Message
+}
+
 Agent <|-- UtilityAgent
-UtilityAgent "1" *-- "1" UtilityFunction : owns
 UtilityAgent <|-- AGVAgent
 UtilityAgent <|-- OrderAgent
 UtilityAgent <|-- ChargingStationAgent
 UtilityAgent <|-- AisleAgent
 
+UtilityAgent "1" *-- "1" UtilityFunction : owns
+Agent "1" *-- "1" MqttClient : owns
+Agent "1" o-- "0..*" Sensor : reads
+Agent "1" o-- "0..*" Actuator : commands
+UtilityAgent "*" --> "1" KnowledgeBase : queries
+Sensor "*" --> "1" MqttClient : publishes via
+Actuator "*" --> "1" MqttClient : subscribes via
+MqttClient ..> Message : sends / receives
 @enduml
