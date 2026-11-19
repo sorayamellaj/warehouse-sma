@@ -110,4 +110,49 @@ UtilityAgent "*" --> "1" KnowledgeBase : queries
 Sensor "*" --> "1" MqttClient : publishes via
 Actuator "*" --> "1" MqttClient : subscribes via
 MqttClient ..> Message : sends / receives
+
+interface CoordinationStrategy {
+  + coordinate(agents : list, game : Game) : dict
+}
+
+class SelfishNavigation {
+  + coordinate(agents : list, game : Game) : dict
+}
+
+class NashEquilibrium {
+  + coordinate(agents : list, game : Game) : dict
+}
+
+class ConsensusAlgorithm {
+  - max_iterations : int
+  - timeout : float
+  + coordinate(agents : list, game : Game) : dict
+  + best_response(agent : AGVAgent) : list
+  + request_reservations(agent : AGVAgent) : bool
+  + has_converged() : bool
+}
+
+class CentralizedOptimum {
+  - solver : str
+  + coordinate(agents : list, game : Game) : dict
+}
+
+class Game {
+  - players : list
+  - strategy : CoordinationStrategy
+  + social_welfare(profile : dict) : float
+  + potential(profile : dict) : float
+  + price_of_anarchy() : float
+  + jain_index() : float
+  + run() : dict
+}
+
+CoordinationStrategy <|.. SelfishNavigation
+CoordinationStrategy <|.. NashEquilibrium
+CoordinationStrategy <|.. ConsensusAlgorithm
+CoordinationStrategy <|.. CentralizedOptimum
+
+Game "1" o-- "2..*" AGVAgent : players
+Game "1" --> "1" CoordinationStrategy : uses
+ConsensusAlgorithm ..> AisleAgent : requests slots
 @enduml
