@@ -1,0 +1,61 @@
+@startuml
+title Warehouse MAS - Class diagram (Part 1: Agent Hierarchy)
+
+abstract class Agent {
+  - id : str
+  - state : dict
+  + perceive() : void
+  + update_state() : void
+  + act() : void
+  + {abstract} decide() : Action
+}
+
+abstract class UtilityAgent {
+  - utilityFunction : UtilityFunction
+  + decide() : Action
+  # possible_actions() : list
+  + {abstract} evaluate(a : Action) : float
+}
+
+class UtilityFunction {
+  - alpha : float
+  - beta : float
+  - gamma : float
+  - b_min : float
+  + compute(state : dict, a : Action) : float
+}
+
+class AGVAgent {
+  - position : Node
+  - battery : float
+  - current_order : Order
+  + evaluate(a : Action) : float
+}
+
+class OrderAgent {
+  - origin : Node
+  - destination : Node
+  - priority : str
+  + evaluate(a : Action) : float
+}
+
+class ChargingStationAgent {
+  - capacity_k : int
+  - queue : list
+  + evaluate(a : Action) : float
+}
+
+class AisleAgent {
+  - segment_id : str
+  - reservations : dict
+  + evaluate(a : Action) : float
+}
+
+Agent <|-- UtilityAgent
+UtilityAgent "1" *-- "1" UtilityFunction : owns
+UtilityAgent <|-- AGVAgent
+UtilityAgent <|-- OrderAgent
+UtilityAgent <|-- ChargingStationAgent
+UtilityAgent <|-- AisleAgent
+
+@enduml
