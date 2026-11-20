@@ -1,0 +1,41 @@
+@startuml
+title Decision cycle - nominal case
+
+participant "Sensor" as S
+participant "MQTT Broker" as B
+participant "AGVAgent" as A
+participant "KnowledgeBase" as KB
+participant "AisleAgent" as AA
+participant "Actuator" as ACT
+
+S -> B : publish(warehouse/agv/agv07/pose, QoS 0)
+B -> A : deliver measurement O(t)
+
+A -> A : update_state()\nS(t) = Model(S(t-1), O(t), A(t-1))
+
+A -> KB : get_layout(), get_priority(order),\nis_restricted(segment)
+KB --> A : layout, priority, safety zones
+
+A -> A : compute utilities U(a) for each action\n(UtilityFunction.compute)
+
+loop consensus iterations
+  A -> B : publish(warehouse/aisle/s2/request, QoS 1)
+  B -> AA : deliver request
+  AA -> B : publish(updated reservation table,\nQoS 1, retained)
+  B -> A : deliver updated table
+  A -> A : best_response()\nrecompute utility
+end
+
+alt convergence reached
+  A -> A : a* = argmax U(a)
+  A -> B : publish(warehouse/agv/agv07/cmd,\nroute, QoS 1)
+  B -> ACT : deliver command
+  ACT -> ACT : execute movement
+  ACT -> B : publish(actual status)
+  B -> A : deliver actual state
+else timeout exceeded
+  A -> A : keep previous plan\n(wait one time slot)
+  A -> B : publish(warehouse/agv/agv07/cmd,\nwait, QoS 1)
+  B -> ACT : deliver command
+end
+@enduml

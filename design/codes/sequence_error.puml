@@ -1,0 +1,42 @@
+@startuml
+title Decision cycle - error case: AGV disconnects during consensus
+
+participant "AGVAgent\n(agv07)" as A7
+participant "MQTT Broker" as B
+participant "AisleAgent\n(s2)" as AA
+participant "AGVAgent\n(agv03)" as A3
+
+== Connection with Last Will ==
+A7 -> B : CONNECT with LWT\n(topic sma/agent/agv07/statut,\npayload offline, QoS 1, retained)
+A7 -> B : publish(sma/agent/agv07/statut,\nonline, QoS 1, retained)
+note over AA, A3 : subscribed to sma/agent/+/statut
+
+== Consensus in progress ==
+loop consensus iterations
+  A7 -> B : publish(warehouse/aisle/s2/request, QoS 1)
+  B -> AA : deliver request
+  AA -> B : publish(updated reservation table,\nQoS 1, retained)
+  B -> A3 : deliver updated table
+end
+
+== Failure ==
+A7 -[#red]-> B : connection lost (crash, no DISCONNECT)
+destroy A7
+B -> B : keep-alive timeout detected
+
+== Detection and recovery ==
+B -> AA : publish LWT\n(sma/agent/agv07/statut = offline)
+B -> A3 : publish LWT\n(sma/agent/agv07/statut = offline)
+
+AA -> AA : release future reservations of agv07\nmark segment s2 as blocked
+AA -> B : publish(warehouse/aisle/s2/reservation,\nupdated table, QoS 1, retained)
+B -> A3 : deliver updated table
+
+A3 -> A3 : mark agv07 as failed\nrestart consensus (recompute best response,\navoid s2)
+
+alt new plan found before timeout
+  A3 -> B : publish(warehouse/agv/agv03/cmd,\nnew route, QoS 1)
+else timeout exceeded
+  A3 -> B : publish(warehouse/agv/agv03/cmd,\nwait, QoS 1)
+end
+@enduml
